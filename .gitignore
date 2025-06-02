@@ -134,3 +134,10 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Add this line to your .gitignore file
+*.bat
+
+# Or be more specific:
+setup-directories.bat
+install-backend.bat
