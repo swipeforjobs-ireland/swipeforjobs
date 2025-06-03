@@ -6,6 +6,7 @@ import { MapPin, Clock, Star, X, Heart, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/authStore';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 
 // Mock Irish job data
 const mockJobs = [
@@ -245,14 +246,56 @@ const SwipeJobsInterface: React.FC = () => {
     }
   }, [isAuthenticated, router]);
 
-  const handleSwipe = (direction: 'left' | 'right') => {
-    if (direction === 'right') {
-      setApplications(prev => prev + 1);
-    } else {
-      setRejections(prev => prev + 1);
+  const handleSwipe = async (direction: 'left' | 'right') => {
+    const currentJob = jobs[currentIndex];
+    if (!currentJob) return;
+
+    try {
+      // Save the swipe action to database
+      await api.post('/api/v1/applications', {
+        jobId: currentJob.id.toString(),
+        action: direction === 'right' ? 'apply' : 'reject',
+        jobData: {
+          title: currentJob.title,
+          company: currentJob.company,
+          location: currentJob.location,
+          salary: currentJob.salary,
+          type: currentJob.type,
+          description: currentJob.description,
+          requirements: currentJob.requirements,
+          benefits: currentJob.benefits,
+          companyLogo: currentJob.companyLogo
+        }
+      });
+
+      // Update local stats
+      if (direction === 'right') {
+        setApplications(prev => prev + 1);
+      } else {
+        setRejections(prev => prev + 1);
+      }
+      
+      setCurrentIndex(prev => prev + 1);
+    } catch (error: any) {
+      console.log('API response:', error.response?.data);
+      
+      // Handle "already applied" case gracefully
+      if (error.response?.data?.error === 'Already applied to this job') {
+        console.log('Already applied to this job, skipping...');
+        // Still update UI but don't increment applied counter
+        setCurrentIndex(prev => prev + 1);
+        return;
+      }
+      
+      console.error('Error saving application:', error);
+      // Still update UI even if save fails
+      if (direction === 'right') {
+        setApplications(prev => prev + 1);
+      } else {
+        setRejections(prev => prev + 1);
+      }
+      setCurrentIndex(prev => prev + 1);
     }
-    
-    setCurrentIndex(prev => prev + 1);
   };
 
   const handleButtonSwipe = (direction: 'left' | 'right') => {

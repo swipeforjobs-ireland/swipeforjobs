@@ -111,10 +111,18 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4 flex items-center space-x-2">
-            <Eye className="w-5 h-5" />
-            <span>Recent Activity</span>
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold flex items-center space-x-2">
+              <Eye className="w-5 h-5" />
+              <span>Recent Activity</span>
+            </h2>
+            <Link
+              href="/applications"
+              className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+            >
+              View All Applications →
+            </Link>
+          </div>
           <div className="text-center py-8">
             <div className="text-gray-400 text-4xl mb-4">📭</div>
             <p className="text-gray-600">No applications yet</p>

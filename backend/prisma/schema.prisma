@@ -25,6 +25,7 @@ model User {
 
   // Relations
   profile           UserProfile?
+  preferences       UserPreferences?
   cvs              CV[]
   applications     JobApplication[]
   subscription     Subscription?
@@ -44,6 +45,39 @@ model UserProfile {
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_profiles")
+}
+
+// NEW: User Preferences for Job Matching
+model UserPreferences {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  
+  // Employment preferences
+  employmentTypes   EmploymentType[] // Full-time, Part-time, Internship, Contract, Freelance
+  workArrangements  WorkArrangement[] // On-site, Remote, Hybrid
+  
+  // Location preferences
+  preferredCounties String[] // Dublin, Cork, Galway, etc.
+  willingToRelocate Boolean  @default(false)
+  
+  // Industry and role preferences
+  industries        String[] // Tech, Engineering, Science, Finance, etc.
+  experienceLevel   ExperienceLevel?
+  
+  // Salary preferences
+  minSalary         Int?     // Minimum salary expectation
+  maxSalary         Int?     // Maximum salary expectation
+  
+  // Other preferences
+  companySize       CompanySize[] // Startup, SME, Enterprise
+  benefits          String[] // Remote work, Health insurance, etc.
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }
 
 // CV Management
@@ -79,47 +113,92 @@ model CVVersion {
   @@map("cv_versions")
 }
 
-// Job Data
+// Enhanced Job Data
 model Job {
-  id           String   @id @default(cuid())
-  title        String
-  company      String
-  location     String?
-  description  String
-  requirements String?
-  salaryRange  String?
-  sourceBoard  String   // e.g., "IrishJobs.ie", "Jobs.ie"
-  externalId   String?  // ID from the job board
-  url          String?  // Original job posting URL
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  title           String
+  company         String
+  location        String?
+  county          String?  // Dublin, Cork, Galway, etc.
+  workArrangement WorkArrangement? // On-site, Remote, Hybrid
+  description     String
+  requirements    String?
+  salaryRange     String?
+  minSalary       Int?     // For filtering
+  maxSalary       Int?
+  employmentType  EmploymentType?
+  industry        String?  // Tech, Engineering, Science, etc.
+  experienceLevel ExperienceLevel?
+  companySize     CompanySize?
+  
+  sourceBoard     String   // e.g., "IrishJobs.ie", "Jobs.ie"
+  externalId      String?  // ID from the job board
+  url             String?  // Original job posting URL
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
-  applications JobApplication[]
-  cvVersions   CVVersion[]
+  applications    JobApplication[]
+  cvVersions      CVVersion[]
 
   @@unique([sourceBoard, externalId])
   @@map("jobs")
 }
 
+// Enhanced Job Application with Status Tracking
 model JobApplication {
-  id          String            @id @default(cuid())
-  userId      String
-  jobId       String
-  cvId        String
-  status      ApplicationStatus @default(PENDING)
-  coverLetter String?
-  appliedAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id              String            @id @default(cuid())
+  userId          String
+  jobId           String
+  cvId            String
+  status          ApplicationStatus @default(PENDING)
+  
+  // Application details
+  coverLetter     String?
+  appliedAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  // Tracking fields
+  viewedByEmployer DateTime?
+  responseDate     DateTime?
+  interviewDate    DateTime?
+  offerDate        DateTime?
+  
+  // AI matching score (for future use)
+  matchingScore   Float?           // 0-100 score of how well user matches job
+  
+  // Notes and follow-ups
+  notes           String?
+  followUpDate    DateTime?
 
   // Relations
-  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job         Job                  @relation(fields: [jobId], references: [id])
-  cv          CV                   @relation(fields: [cvId], references: [id])
-  responses   ApplicationResponse[]
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job             Job                  @relation(fields: [jobId], references: [id])
+  cv              CV                   @relation(fields: [cvId], references: [id])
+  responses       ApplicationResponse[]
+  interviews      Interview[]
 
   @@map("job_applications")
+}
+
+// NEW: Interview Scheduling
+model Interview {
+  id              String      @id @default(cuid())
+  applicationId   String
+  scheduledAt     DateTime
+  duration        Int?        // Duration in minutes
+  type            InterviewType
+  location        String?     // Office address or video link
+  notes           String?
+  status          InterviewStatus @default(SCHEDULED)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  application     JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("interviews")
 }
 
 model ApplicationResponse {
@@ -128,6 +207,7 @@ model ApplicationResponse {
   responseType  ResponseType
   receivedAt    DateTime    @default(now())
   details       String?     // Additional details about the response
+  isPositive    Boolean?    // Whether response was positive/negative
 
   // Relations
   application   JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
@@ -191,7 +271,11 @@ enum ApplicationStatus {
   RESPONDED
   REJECTED
   INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
   OFFER_RECEIVED
+  OFFER_ACCEPTED
+  OFFER_DECLINED
+  WITHDRAWN
 }
 
 enum ResponseType {
@@ -200,4 +284,51 @@ enum ResponseType {
   INTERVIEW_REQUEST
   OFFER
   REQUEST_FOR_INFO
+  FOLLOW_UP
+}
+
+// NEW: Enhanced Enums for Better Job Matching
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  INTERNSHIP
+  CONTRACT
+  FREELANCE
+}
+
+enum WorkArrangement {
+  ON_SITE
+  REMOTE
+  HYBRID
+}
+
+enum ExperienceLevel {
+  GRADUATE
+  JUNIOR
+  MID_LEVEL
+  SENIOR
+  LEAD
+  EXECUTIVE
+}
+
+enum CompanySize {
+  STARTUP
+  SME
+  ENTERPRISE
+}
+
+enum InterviewType {
+  PHONE
+  VIDEO
+  IN_PERSON
+  TECHNICAL
+  PANEL
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+  NO_SHOW
 }

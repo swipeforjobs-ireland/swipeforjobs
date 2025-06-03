@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import compression from 'compression';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
+import applicationRoutes from './routes/applications';
 
 // Load environment variables
 dotenv.config();
@@ -35,7 +36,9 @@ app.get('/health', (req, res) => {
   });
 });
 
+// API Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/applications', applicationRoutes);
 
 // Test endpoint
 app.get('/api/v1/test', (req, res) => {
@@ -53,7 +56,9 @@ app.get('/', (req, res) => {
     version: '0.1.0',
     endpoints: {
       health: '/health',
-      test: '/api/v1/test'
+      test: '/api/v1/test',
+      auth: '/api/v1/auth',
+      applications: '/api/v1/applications'
     }
   });
 });
